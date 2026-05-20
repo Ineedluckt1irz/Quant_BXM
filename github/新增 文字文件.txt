@@ -1,0 +1,22 @@
+情況一：日常更新 (最常用)
+cd "C:/Users/User/Desktop/Thesis_project/Code/SBXM"
+1. 加入清單 (Add)
+git add .
+2. 提交並寫備註 (Commit)
+git commit -m "這裡寫你今天改了什麼"
+3. 推送上雲端 (Push)
+git push
+
+
+情況二：如果哪天你要開「新專案」
+1.去 GitHub 網站：點右上角 + -> New repository -> 設為 Private -> 建立。
+
+2.在你電腦上：建立好資料夾，設定好 .gitignore (擋住資料庫)。
+
+3.在 Terminal 輸入：
+git init
+git add .
+git commit -m "First commit"
+git branch -M main
+git remote add origin https://github.com/你的帳號/新專案名稱.git
+git push -u origin main

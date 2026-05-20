@@ -1,0 +1,181 @@
+# ==============================================================================
+# Count Active MABXM Stocks (Bull Trend = 1) + DJI constituent filter
+# ==============================================================================
+
+library(readxl)
+library(openxlsx)
+library(dplyr)
+library(lubridate)
+library(ggplot2)
+library(tidyr)
+
+# 1. 路徑設定 ==========================================================
+path_signal <- "C:/Users/User/Desktop/Thesis_project/Output_M100/全期間/Output_MABXM/MABXM_Signals_DailyMA.xlsx"
+path_dji    <- "C:/Users/User/Desktop/Thesis_project/data_raw/DJI成分股名單.xls"
+
+start_date <- as.Date("2004-07-16")
+
+# 2. 讀取訊號檔 ========================================================
+signal_df <- read.xlsx(path_signal) %>%
+  mutate(
+    Trade_Date = as.Date(as.numeric(Trade_Date), origin = "1899-12-30"),
+    Ticker = toupper(trimws(Ticker))
+  )
+
+# 篩選 Is_Bull_Trend = 1 (依照你的定義 = 有執行策略)
+signal_active <- signal_df %>%
+  filter(Is_Bull_Trend == 1,
+         Trade_Date >= start_date)
+
+# 3. 讀取 DJI 成分股資料 ===============================================
+dji_raw <- read_excel(path_dji)
+
+# 找出百分比欄位（和你原始 code 一樣邏輯）
+equity_cols <- names(dji_raw)[grepl("%", names(dji_raw))]
+
+month_map <- c(
+  "Jan"="01","Feb"="02","Mar"="03","Apr"="04",
+  "May"="05","Jun"="06","Jul"="07","Aug"="08",
+  "Sep"="09","Oct"="10","Nov"="11","Dec"="12"
+)
+
+# 建立 ticker + 日期 + 是否為成分股
+membership_list <- list()
+
+for(i in 1:nrow(dji_raw)) {
+  
+  ticker_i <- toupper(trimws(as.character(dji_raw$ticker[i])))
+  
+  for(col in equity_cols) {
+    
+    val_num <- suppressWarnings(as.numeric(dji_raw[[col]][i]))
+    
+    if(!is.na(val_num)) {
+      
+      clean_col <- gsub(" % Of Equity", "", col)
+      clean_col <- gsub("\\.", "-", clean_col)
+      
+      parts <- strsplit(clean_col, "-")[[1]]
+      
+      if(length(parts) >= 3 && parts[1] %in% names(month_map)) {
+        
+        date_str <- paste0(parts[3], "-", month_map[parts[1]], "-", parts[2])
+        
+        membership_list[[length(membership_list)+1]] <- data.frame(
+          Ticker = ticker_i,
+          Report_Date = as.Date(date_str),
+          Is_Member = val_num > 0
+        )
+      }
+    }
+  }
+}
+
+membership_df <- bind_rows(membership_list) %>%
+  arrange(Ticker, Report_Date)
+
+# 4. 判斷每筆 signal 當天是否仍為成分股 ==================================
+signal_active2 <- signal_active %>%
+  arrange(Ticker, Trade_Date)
+
+get_member_status <- function(ticker, trade_date) {
+  
+  tmp <- membership_df %>%
+    filter(Ticker == ticker,
+           Report_Date <= trade_date) %>%
+    arrange(Report_Date)
+  
+  if(nrow(tmp) == 0) return(FALSE)
+  
+  tail(tmp$Is_Member, 1)
+}
+
+signal_active2$Is_DJI_Member <- mapply(
+  get_member_status,
+  signal_active2$Ticker,
+  signal_active2$Trade_Date
+)
+
+# 只保留當天是成分股
+signal_final <- signal_active2 %>%
+  filter(Is_DJI_Member == TRUE)
+
+# 5. 每日計算股票數 ===================================================
+daily_count <- signal_final %>%
+  group_by(Trade_Date) %>%
+  summarise(Active_Stock_Count = n_distinct(Ticker)) %>%
+  ungroup()
+
+print(head(daily_count))
+
+# 6. 畫圖 =============================================================
+p <- ggplot(
+  daily_count,
+  aes(x = Trade_Date, y = Active_Stock_Count)
+) +
+  geom_line(
+    color = "gray20",
+    size = 1
+  ) +
+  geom_point(
+    color = "#C00000",
+    size = 1.5
+  ) +
+  labs(
+    title = "Number of Stocks Executing Strategy",
+    x = "Date",
+    y = "Number of Stocks"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    # 標題置中加粗
+    plot.title = element_text(
+      hjust = 0.5,
+      size = 18,
+      face = "bold"
+    ),
+    
+    # 黑色大外框
+    panel.border = element_rect(
+      colour = "black",
+      fill = NA,
+      linewidth = 1
+    ),
+    
+    # 座標軸黑色
+    axis.line = element_line(
+      colour = "black",
+      linewidth = 0.8
+    ),
+    
+    # 背景白色
+    panel.background = element_rect(
+      fill = "white",
+      colour = NA
+    ),
+    
+    # 外部背景白色
+    plot.background = element_rect(
+      fill = "white",
+      colour = NA
+    )
+  )
+
+print(p)
+# 7. 存圖 =============================================================
+ggsave(
+  filename = "C:/Users/User/Desktop/Thesis_project/Output_M100/全期間/Output_MABXM/Active_Stock_Count.png",
+  plot = p,
+  width = 12,
+  height = 6,
+  dpi = 300
+)
+
+# 8. 輸出資料 =========================================================
+write.xlsx(
+  daily_count,
+  "C:/Users/User/Desktop/Thesis_project",
+  overwrite = TRUE
+)
+
+cat("完成：圖與Excel已輸出\n")
