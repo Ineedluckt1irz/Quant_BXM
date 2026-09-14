@@ -22,9 +22,9 @@ signal_df <- read.xlsx(path_signal) %>%
     Ticker = toupper(trimws(Ticker))
   )
 
-# 篩選 Is_Bull_Trend = 1 (依照你的定義 = 有執行策略)
+# 篩選 Is_Bull_Trend = 0 (依照你的定義 = 有執行策略)
 signal_active <- signal_df %>%
-  filter(Is_Bull_Trend == 1,
+  filter(Is_Bull_Trend == 0,
          Trade_Date >= start_date)
 
 # 3. 讀取 DJI 成分股資料 ===============================================

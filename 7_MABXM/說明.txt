@@ -1,0 +1,16 @@
+1.篩選MA訊號
+
+MA20  = rollmean(close, k = 20,  fill = NA, align = "right"),
+MA180 = rollmean(close, k = 180, fill = NA, align = "right")
+#此處可以更改MA的數值
+
+
+
+2.MBXM30檔成分股策略生成
+
+3.特殊案件處理為有碰到股票分割需另外處理股票
+
+target_ticker <- "DD"    #總共有3檔，需要手動更改此變數為 "DD", "MDLZ", 或 "RTX"
+
+4.做價格權重
+

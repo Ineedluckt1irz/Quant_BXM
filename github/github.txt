@@ -1,0 +1,21 @@
+# 1. 在新的 Code 資料夾初始化 Git
+git init
+
+# 2. 把所有程式碼（包含你的 SBXM 策略等檔案）加進去
+git add .
+
+# 3. 重新提交紀錄
+git commit -m "重整資料夾結構並上傳完整版"
+
+# 4. 強制將預設分支名稱改為 main
+git branch -M main
+
+# 5. 重新綁定你原本 GitHub 的儲存庫網址
+git remote add origin https://github.com/你的帳號/你的儲存庫名稱.git
+
+# 6. 正式推上去，並把進度同步！
+git push -f -u origin main
+---------------------------------------
+git add .
+git commit -m "寫下你這次改了什麼（例如：修正 robustness 跑圖 bug）"
+git push
